@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.core.matchers.SerializationMatchers;
 import io.swagger.v3.core.util.Json;
 import io.swagger.v3.core.util.Yaml;
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.media.ArraySchema;
 import io.swagger.v3.oas.models.media.IntegerSchema;
@@ -49,6 +50,38 @@ public class ParameterDeSerializationTest {
                 "}";
         final Parameter p = m.readValue(json, Parameter.class);
         SerializationMatchers.assertEqualsToJson(p, json);
+    }
+
+    @Test
+    public void testParameterPathParameterComparison() throws IOException {
+        Parameter parameter = new Parameter().in("path");
+        ObjectMapper mapper=  Json.mapper();
+        String parameterJson= "{\"in\":\"path\"}";
+        Parameter roundtrippedParameter = mapper.readValue(parameterJson, Parameter.class);
+        assertEquals(parameter, roundtrippedParameter);
+    }
+
+    @Test
+    public void testPathParameterRefwoRefComparison() throws IOException {
+        OpenAPI openApi = new OpenAPI();
+
+        Parameter refedParameter = new Parameter().in("path");
+        Parameter parameter = new Parameter().$ref("#/components/parameters/refed");
+        Parameter otherParameter = new Parameter().in("path");
+
+        Components components = new Components();
+        openApi.setComponents(components);
+        components.addParameters("refed", refedParameter);
+        components.addParameters("base", parameter);
+        components.addParameters("other", otherParameter);
+
+        String openApiJson = "{\"openapi\":\"3.0.1\",\"components\":{\"parameters\":{\"other\":{\"in\":\"path\",\"required\":true},\"refed\":{\"in\":\"path\",\"required\":true},\"base\":{\"$ref\":\"#/components/parameters/refed\"}}}}";
+
+        ObjectMapper mapper=  Json.mapper();
+
+        OpenAPI deserialized = mapper.readValue(openApiJson, OpenAPI.class);
+
+        assertEquals(openApi, deserialized);
     }
 
     @Test(description = "it should deserialize a PathParameter")
